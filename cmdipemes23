@@ -1,0 +1,194 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>IPMES App - Pro Edition</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      height: 100%;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #0d0d0d;
+      color: white;
+    }
+
+    #splash {
+      position: fixed;
+      width: 100vw;
+      height: 100vh;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    #splash video {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      filter: brightness(0.4) blur(2px);
+      z-index: -1;
+    }
+
+    #splash-content {
+      background-color: rgba(0, 0, 0, 0.6);
+      padding: 40px;
+      border-radius: 15px;
+      text-align: center;
+      animation: fadeIn 2s ease;
+    }
+
+    #splash-content input {
+      padding: 12px 25px;
+      font-size: 18px;
+      border: none;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+
+    #splash-content button {
+      padding: 10px 25px;
+      background-color: #00e6aa;
+      border: none;
+      border-radius: 8px;
+      font-size: 18px;
+      color: #000;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    #splash-content button:hover {
+      background-color: #00ffcc;
+    }
+
+    #dashboard {
+      display: none;
+      padding: 40px;
+      text-align: center;
+      animation: zoomIn 1s ease forwards;
+    }
+
+    .solde {
+      font-size: 40px;
+      font-weight: bold;
+      color: #00ffcc;
+      margin-bottom: 20px;
+    }
+
+    .etat {
+      padding: 15px;
+      font-size: 20px;
+      margin-bottom: 25px;
+      border-radius: 10px;
+      display: inline-block;
+    }
+
+    .gain { background-color: #d4edda; color: #155724; }
+    .perte { background-color: #f8d7da; color: #721c24; }
+
+    #stats p {
+      font-size: 18px;
+      margin: 5px 0;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes zoomIn {
+      0% { transform: scale(0.8); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="splash">
+  <video autoplay muted loop>
+    <source src="intro_video.mp4" type="video/mp4">
+  </video>
+  <div id="splash-content">
+    <h1>🔐 Accès IPMES</h1>
+    <input type="password" id="code" placeholder="Entrer le code" />
+    <br />
+    <button onclick="valider()">Accès</button>
+  </div>
+</div>
+
+<div id="dashboard">
+  <div class="solde">💼 Solde : <span id="solde">0</span> DH</div>
+  <div id="etat" class="etat">Chargement...</div>
+  <div id="stats">
+    <p>✅ Confirmés : <span id="confirmes">0</span></p>
+    <p>❌ Refusés : <span id="refuses">0</span></p>
+    <p>⏳ En attente : <span id="attente">0</span></p>
+    <p>💰 Total encaissé : <span id="encaisse">0</span> DH</p>
+    <p>📉 Balance : <span id="pertes">0</span> DH</p>
+  </div>
+  <button onclick="charger()">🔄 Actualiser</button>
+</div>
+
+<audio id="sound" src="sound.mp3"></audio>
+
+<script>
+  function valider() {
+    const code = document.getElementById("code").value;
+    if (code === "1972") {
+      document.getElementById("splash").style.display = "none";
+      document.getElementById("dashboard").style.display = "block";
+      document.getElementById("sound").play();
+      charger();
+    } else {
+      alert("Code incorrect");
+    }
+  }
+
+  async function charger() {
+    const url = "https://api.sheetbest.com/sheets/d5304ffb-3565-44f6-9882-7fa4f5007490";
+    const response = await fetch(url);
+    const data = await response.json();
+    const seuil = 7000;
+
+    let confirmes = 0, refuses = 0, attente = 0, encaisse = 0, pertes = 0;
+    data.forEach(row => {
+      const statut = (row["statut"] || "").toLowerCase();
+      const prixStr = (row["Prix"] || "").replace("DH", "").replace(/\s/g, '');
+      const prix = parseInt(prixStr) || 0;
+
+      if (statut.includes("confirmé")) {
+        confirmes++;
+        encaisse += prix;
+      } else if (statut.includes("refusé")) {
+        refuses++;
+        pertes += prix;
+      } else if (statut.includes("attente")) {
+        attente++;
+      }
+    });
+
+    const solde = encaisse - pertes;
+    document.getElementById("confirmes").textContent = confirmes;
+    document.getElementById("refuses").textContent = refuses;
+    document.getElementById("attente").textContent = attente;
+    document.getElementById("encaisse").textContent = encaisse;
+    document.getElementById("pertes").textContent = (solde >= 0 ? "+" : "-") + Math.abs(solde) + " DH";
+    document.getElementById("solde").textContent = solde;
+
+    const etat = document.getElementById("etat");
+    if (solde >= seuil) {
+      etat.textContent = "🟢 Tu es en gain 💸";
+      etat.className = "etat gain";
+    } else {
+      etat.textContent = "🔴 Tu es en perte 😓";
+      etat.className = "etat perte";
+    }
+  }
+</script>
+
+</body>
+</html>
